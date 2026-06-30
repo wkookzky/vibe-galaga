@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const MG = (window.MiniGalaga = window.MiniGalaga || {});
 
   MG.canvas = document.getElementById("gameCanvas");
@@ -7,6 +7,7 @@
   MG.dom = {
     scoreEl: document.getElementById("score"),
     stageEl: document.getElementById("stage"),
+    levelEl: document.getElementById("level"),
     livesEl: document.getElementById("lives"),
     powerupStateEl: document.getElementById("powerupState"),
     achievementCountEl: document.getElementById("achievementCount"),
@@ -17,14 +18,16 @@
   };
 
   MG.keys = {};
-  MG.STORAGE_KEY = "mini-galaga-achievements";
+  MG.MAX_STAGE = 3;
+  MG.MAX_LEVEL = 3;
+  MG.backendBaseUrl = "http://127.0.0.1:8000";
 
   MG.achievementDefs = [
     { id: "first_blood", name: "First Blood", check: (game) => game.enemiesDestroyed >= 1 },
     { id: "power_surge", name: "Power Surge", check: (game) => game.powerupsCollected >= 1 },
     { id: "ace_pilot", name: "Ace Pilot", check: (game) => game.enemiesDestroyed >= 25 },
     { id: "boss_breaker", name: "Boss Breaker", check: (game) => game.bossesDefeated >= 1 },
-    { id: "stage_five", name: "Stage Five", check: (game) => game.highestStage >= 5 },
+    { id: "stage_three", name: "Stage Three", check: (game) => game.highestStage >= 3 },
     { id: "survivor", name: "Survivor", check: (game) => game.shieldBlocks >= 3 }
   ];
 
@@ -57,6 +60,7 @@
     enemyDrop: false,
     score: 0,
     stage: 1,
+    level: 1,
     lives: 3,
     state: "ready",
     boss: null,
@@ -69,24 +73,6 @@
     achievements: [],
     toastTimer: null,
     damageLocked: false
-  };
-
-  MG.loadAchievements = function loadAchievements() {
-    try {
-      const raw = localStorage.getItem(MG.STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  };
-
-  MG.saveAchievements = function saveAchievements() {
-    try {
-      localStorage.setItem(MG.STORAGE_KEY, JSON.stringify(MG.game.achievements));
-    } catch {
-      // Storage may be blocked; keep the in-memory state.
-    }
   };
 
   MG.isEffectActive = function isEffectActive(type) {
@@ -104,12 +90,13 @@
     if (MG.player.shield > 0) {
       active.push(`Shield x${MG.player.shield}`);
     }
-    return active.length ? active.join(" / ") : "None";
+    return active.length ? active.join(" / " ) : "None";
   };
 
   MG.updateHud = function updateHud() {
     MG.dom.scoreEl.textContent = MG.game.score;
-    MG.dom.stageEl.textContent = MG.game.stage;
+    MG.dom.stageEl.textContent = `${MG.game.stage}/${MG.MAX_STAGE}`;
+    MG.dom.levelEl.textContent = `${MG.game.level}/${MG.MAX_LEVEL}`;
     MG.dom.livesEl.textContent = MG.game.lives;
     MG.dom.powerupStateEl.textContent = MG.getPowerupState();
     MG.dom.achievementCountEl.textContent = `${MG.game.achievements.length}/${MG.achievementDefs.length}`;

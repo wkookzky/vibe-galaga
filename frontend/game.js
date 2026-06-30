@@ -14,7 +14,7 @@
 
   MG.dom.startButton.addEventListener("click", MG.resetGame);
 
-  MG.game.achievements = MG.loadAchievements();
+  MG.game.achievements = [];
   MG.createStars();
   MG.updateHud();
   MG.draw();

@@ -1,8 +1,76 @@
-(function () {
+﻿(function () {
   const MG = window.MiniGalaga;
 
-  MG.isBossStage = function isBossStage(value) {
-    return value % 3 === 0;
+  MG.phaseConfigs = {
+    1: {
+      1: {
+        enemyRows: 4,
+        enemySpeed: 0.82,
+        enemyShootChance: 0.018,
+        enemyBulletSpeed: 3.15
+      },
+      2: {
+        enemyRows: 4,
+        enemySpeed: 0.92,
+        enemyShootChance: 0.021,
+        enemyBulletSpeed: 3.25
+      },
+      3: {
+        enemyRows: 5,
+        enemySpeed: 1.02,
+        enemyShootChance: 0.024,
+        enemyBulletSpeed: 3.35
+      }
+    },
+    2: {
+      1: {
+        enemyRows: 5,
+        enemySpeed: 1.0,
+        enemyShootChance: 0.022,
+        enemyBulletSpeed: 3.35
+      },
+      2: {
+        enemyRows: 5,
+        enemySpeed: 1.1,
+        enemyShootChance: 0.025,
+        enemyBulletSpeed: 3.45
+      },
+      3: {
+        enemyRows: 6,
+        enemySpeed: 1.2,
+        enemyShootChance: 0.028,
+        enemyBulletSpeed: 3.55
+      }
+    },
+    3: {
+      1: {
+        enemyRows: 6,
+        enemySpeed: 1.18,
+        enemyShootChance: 0.026,
+        enemyBulletSpeed: 3.55
+      },
+      2: {
+        enemyRows: 6,
+        enemySpeed: 1.28,
+        enemyShootChance: 0.029,
+        enemyBulletSpeed: 3.65
+      },
+      3: {
+        bossHp: 36,
+        bossSpeed: 1.58,
+        bossFireCooldown: 800
+      }
+    }
+  };
+
+  MG.getPhaseConfig = function getPhaseConfig(stage, level) {
+    const safeStage = Math.min(Math.max(stage, 1), MG.MAX_STAGE);
+    const safeLevel = Math.min(Math.max(level, 1), MG.MAX_LEVEL);
+    return MG.phaseConfigs[safeStage][safeLevel] || MG.phaseConfigs[1][1];
+  };
+
+  MG.isBossPhase = function isBossPhase(stage, level) {
+    return stage === MG.MAX_STAGE && level === MG.MAX_LEVEL;
   };
 
   MG.createStars = function createStars() {
@@ -16,7 +84,8 @@
 
   MG.createEnemies = function createEnemies() {
     MG.game.enemies = [];
-    const rows = Math.min(3 + MG.game.stage, 6);
+    const config = MG.getPhaseConfig(MG.game.stage, MG.game.level);
+    const rows = config.enemyRows;
     const cols = 8;
     const gap = 14;
     const enemyWidth = 34;
@@ -39,29 +108,35 @@
     MG.game.enemyDirection = 1;
   };
 
-  MG.createBoss = function createBoss(currentStage) {
+  MG.createBoss = function createBoss(currentStage, currentLevel) {
+    const config = MG.getPhaseConfig(currentStage, currentLevel);
     return {
       x: MG.canvas.width / 2 - 56,
       y: 72,
       width: 112,
       height: 58,
-      hp: 16 + currentStage * 6,
-      maxHp: 16 + currentStage * 6,
+      hp: config.bossHp,
+      maxHp: config.bossHp,
       direction: 1,
-      speed: 1.2 + currentStage * 0.14,
+      speed: config.bossSpeed,
       fireCooldown: 0,
       alive: true
     };
   };
 
   MG.spawnLevel = function spawnLevel() {
+    if (MG.game.stage > MG.MAX_STAGE) {
+      MG.clearGame();
+      return;
+    }
+
     MG.game.bullets = [];
     MG.game.enemyBullets = [];
     MG.game.powerups = [];
 
-    if (MG.isBossStage(MG.game.stage)) {
+    if (MG.isBossPhase(MG.game.stage, MG.game.level)) {
       MG.game.enemies = [];
-      MG.game.boss = MG.createBoss(MG.game.stage);
+      MG.game.boss = MG.createBoss(MG.game.stage, MG.game.level);
       return;
     }
 
@@ -87,6 +162,7 @@
   MG.resetGame = function resetGame() {
     MG.game.score = 0;
     MG.game.stage = 1;
+    MG.game.level = 1;
     MG.game.lives = 3;
     MG.game.state = "playing";
     MG.game.boss = null;
@@ -96,6 +172,7 @@
     MG.game.powerups = [];
     MG.game.explosions = [];
     MG.game.lastShotAt = 0;
+    MG.game.achievements = [];
     MG.player.x = MG.canvas.width / 2 - MG.player.width / 2;
     MG.player.shield = 1;
     MG.powerupExpiry.spread = 0;
@@ -105,7 +182,6 @@
     MG.stats.bossesDefeated = 0;
     MG.stats.shieldBlocks = 0;
     MG.stats.highestStage = 1;
-    MG.game.achievements = MG.loadAchievements();
     MG.createStars();
     MG.spawnLevel();
     MG.updateHud();
@@ -197,7 +273,7 @@
     }
 
     const livingEnemies = MG.game.enemies.filter((enemy) => enemy.alive);
-    const speed = 0.75 + MG.game.stage * 0.18;
+    const speed = MG.getPhaseConfig(MG.game.stage, MG.game.level).enemySpeed;
 
     MG.game.enemyDrop = livingEnemies.some((enemy) => {
       const nextX = enemy.x + speed * MG.game.enemyDirection;
@@ -233,7 +309,7 @@
 
     if (timestamp >= MG.game.boss.fireCooldown) {
       MG.fireBossShots();
-      MG.game.boss.fireCooldown = timestamp + Math.max(450, 980 - MG.game.stage * 60);
+      MG.game.boss.fireCooldown = timestamp + MG.getPhaseConfig(MG.game.stage, MG.game.level).bossFireCooldown;
     }
   };
 
@@ -242,7 +318,8 @@
       return;
     }
 
-    if (Math.random() > 0.018 + MG.game.stage * 0.003) {
+    const config = MG.getPhaseConfig(MG.game.stage, MG.game.level);
+    if (Math.random() > config.enemyShootChance) {
       return;
     }
 
@@ -257,7 +334,7 @@
       y: shooter.y + shooter.height,
       width: 6,
       height: 12,
-      speed: 3.2 + MG.game.stage * 0.18
+      speed: config.enemyBulletSpeed
     });
   };
 
@@ -276,7 +353,7 @@
         y: MG.game.boss.y + MG.game.boss.height,
         width: 6,
         height: 14,
-        speed: pattern.speed + MG.game.stage * 0.1
+        speed: pattern.speed + MG.game.stage * 0.1 + MG.game.level * 0.05
       });
     });
   };
@@ -370,11 +447,45 @@
     MG.spawnLevel();
   };
 
+  MG.submitScore = async function submitScore() {
+    try {
+      await fetch(`${MG.backendBaseUrl}/scores`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          player_name: "Anonymous",
+          score: MG.game.score,
+          stage: MG.game.stage,
+          level: MG.game.level
+        })
+      });
+    } catch (error) {
+      console.warn("Score submission failed", error);
+    }
+  };
+
   MG.endGame = function endGame() {
     MG.game.state = "gameover";
-    cancelAnimationFrame(MG.game.animationId);
+    if (MG.game.animationId) {
+      cancelAnimationFrame(MG.game.animationId);
+      MG.game.animationId = null;
+    }
     MG.draw();
-    MG.showOverlay(`게임 오버! 최종 점수는 ${MG.game.score}점입니다.`, "Restart");
+    void MG.submitScore();
+    MG.showOverlay(`Game over! Final score: ${MG.game.score}`, "Restart");
+  };
+
+  MG.clearGame = function clearGame() {
+    MG.game.state = "cleared";
+    if (MG.game.animationId) {
+      cancelAnimationFrame(MG.game.animationId);
+      MG.game.animationId = null;
+    }
+    MG.draw();
+    void MG.submitScore();
+    MG.showOverlay(`You cleared all stages! Final score: ${MG.game.score}`, "Restart");
   };
 
   MG.defeatBoss = function defeatBoss() {
@@ -384,23 +495,14 @@
 
     MG.game.boss.alive = false;
     MG.stats.bossesDefeated += 1;
-    MG.game.score += 500 + MG.game.stage * 100;
-    MG.game.stage += 1;
-    MG.stats.highestStage = Math.max(MG.stats.highestStage, MG.game.stage);
+    MG.game.score += 500 + MG.game.stage * 100 + MG.game.level * 50;
     MG.createExplosion(MG.game.boss.x + MG.game.boss.width / 2, MG.game.boss.y + MG.game.boss.height / 2, "#ffcf40");
     MG.game.boss = null;
+    MG.stats.highestStage = Math.max(MG.stats.highestStage, MG.game.stage);
     MG.updateHud();
-    MG.showToast("보스 처치!");
-    MG.spawnLevel();
-    MG.game.powerups.push({
-      x: MG.canvas.width / 2,
-      y: 116,
-      type: "shield",
-      speed: 1.6,
-      width: 20,
-      height: 20,
-      collected: false
-    });
+    MG.showToast("Boss defeated!");
+
+    MG.clearGame();
   };
 
   MG.removeOffscreenObjects = function removeOffscreenObjects() {
@@ -410,7 +512,7 @@
   };
 
   MG.maybeDropPowerup = function maybeDropPowerup(x, y) {
-    if (Math.random() > 0.22) {
+    if (Math.random() > 0.11) {
       return;
     }
 
@@ -443,7 +545,7 @@
     }
 
     MG.updateHud();
-    MG.showToast(`파워업 획득: ${MG.getPowerupTitle(type)}`);
+    MG.showToast(`Power-up gained: ${MG.getPowerupTitle(type)}`);
   };
 
   MG.getPowerupTitle = function getPowerupTitle(type) {
@@ -463,14 +565,23 @@
   };
 
   MG.checkLevelClear = function checkLevelClear() {
-    if (MG.game.boss) {
+    if (MG.game.boss || (MG.game.stage >= MG.MAX_STAGE && MG.game.level >= MG.MAX_LEVEL)) {
       return;
     }
 
     if (MG.game.enemies.length > 0 && MG.game.enemies.every((enemy) => !enemy.alive)) {
       MG.game.score += 100;
-      MG.game.stage += 1;
-      MG.stats.highestStage = Math.max(MG.stats.highestStage, MG.game.stage);
+
+      if (MG.game.level < MG.MAX_LEVEL) {
+        MG.game.level += 1;
+        MG.showToast(`Level ${MG.game.stage}-${MG.game.level}`);
+      } else if (MG.game.stage < MG.MAX_STAGE) {
+        MG.game.stage += 1;
+        MG.game.level = 1;
+        MG.stats.highestStage = Math.max(MG.stats.highestStage, MG.game.stage);
+        MG.showToast(`Stage ${MG.game.stage}`);
+      }
+
       MG.updateHud();
       MG.spawnLevel();
     }
@@ -484,9 +595,8 @@
 
       if (achievement.check(MG.stats)) {
         MG.game.achievements.push(achievement.id);
-        MG.saveAchievements();
         MG.updateHud();
-        MG.showToast(`업적 달성: ${achievement.name}`);
+        MG.showToast(`Achievement unlocked: ${achievement.name}`);
       }
     });
   };
