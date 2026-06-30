@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini Galaga</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="game-shell">
+    <section class="hud" aria-label="게임 상태">
+      <div>
+        <span class="label">Score</span>
+        <strong id="score">0</strong>
+      </div>
+      <div>
+        <span class="label">Stage</span>
+        <strong id="stage">1</strong>
+      </div>
+      <div>
+        <span class="label">Lives</span>
+        <strong id="lives">3</strong>
+      </div>
+    </section>
+
+    <section class="status-bar" aria-label="추가 상태">
+      <div>
+        <span class="label">Power-Up</span>
+        <strong id="powerupState">None</strong>
+      </div>
+      <div>
+        <span class="label">Achievements</span>
+        <strong id="achievementCount">0/6</strong>
+      </div>
+      <div class="toast" id="achievementToast" aria-live="polite"></div>
+    </section>
+
+    <div class="canvas-wrap">
+      <canvas id="gameCanvas" width="480" height="640" aria-label="갤러그 게임 화면"></canvas>
+      <div id="overlay" class="overlay">
+        <h1>Mini Galaga</h1>
+        <p id="message">방향키 또는 A/D로 이동하고 Space로 발사하세요.</p>
+        <button id="startButton" type="button">Start</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="state.js"></script>
+  <script src="logic.js"></script>
+  <script src="render.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
